@@ -6,6 +6,8 @@ require("dotenv").config();
 const logger = require("morgan");
 const cors = require("cors");
 
+require("./config/config-passport.js");
+
 const contactsRouter = require("./routes");
 
 const formatsLogger = app.get("env") === "development" ? "dev" : "short";
@@ -17,7 +19,15 @@ app.use(express.json());
 app.use("/api/contacts", contactsRouter);
 
 app.use((req, res) => {
-  res.status(404).json({ message: "Not found" });
+  res.status(404).json({
+    message: `Use api on routes: 
+    /api/contacts/users/signup - registration user {email, password}
+    /api/contacts/users/login - login {email, password}
+    /api/contacts/users/current - get message if user is authenticated
+    /api/contacts/users/logout - get message if user is logged out
+  `,
+    data: "Not found",
+  });
 });
 
 app.use((err, req, res, next) => {
@@ -25,14 +35,14 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const uriDb = process.env.DB_HOST;
+const DB_HOST = process.env.DB_HOST;
 
-const connection = mongoose.connect(uriDb);
+const connection = mongoose.connect(DB_HOST);
 
 connection
   .then(() => {
     app.listen(PORT, function () {
-      console.log(`Database connection successful to port: ${PORT}`);
+      console.log(`Server running. Use our API on port: ${PORT}`);
     });
   })
   .catch((err) => {
