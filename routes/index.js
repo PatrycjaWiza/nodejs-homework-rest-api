@@ -5,13 +5,35 @@ const passport = require("passport");
 const User = require("../service/schemas/users");
 const ctrlContact = require("../controller");
 
+const gravatar = require("gravatar");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs").promises;
+const uploadDir = path.join(process.cwd(), "public/avatars");
+const storeImage = path.join(process.cwd(), "public/avatars");
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.originalname);
+  },
+  limits: {
+    fileSize: 1048576,
+  },
+});
+
+const upload = multer({
+  storage: storage,
+});
+
 // contacts CRUD
-router.get("/", ctrlContact.get);
-router.get("/:id", ctrlContact.getById);
-router.post("/", ctrlContact.create);
-router.delete("/:id", ctrlContact.remove);
-router.put("/:id", ctrlContact.update);
-router.patch("/:id/status", ctrlContact.updateStatusContact);
+router.get("/contacts", ctrlContact.get);
+router.get("/contacts/:id", ctrlContact.getById);
+router.post("/contacts", ctrlContact.create);
+router.delete("/contacts/:id", ctrlContact.remove);
+router.put("/contacts/:id", ctrlContact.update);
+router.patch("/contacts/:id/status", ctrlContact.updateStatusContact);
 
 // user authentication
 require("dotenv").config();
@@ -67,6 +89,7 @@ router.post("/users/login", async (req, res, next) => {
 router.post("/users/signup", async (req, res, next) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
+
   if (user) {
     return res.status(409).json({
       status: "error",
@@ -76,8 +99,10 @@ router.post("/users/signup", async (req, res, next) => {
     });
   }
   try {
-    const newUser = new User({ email });
+    const avatarURL = gravatar.url(email, { s: "250" });
+    const newUser = new User({ email, avatarURL });
     newUser.setPassword(password);
+
     await newUser.save();
     res.status(201).json({
       status: "success",
@@ -86,6 +111,7 @@ router.post("/users/signup", async (req, res, next) => {
         message: {
           email: `${email}`,
           subscription: "starter",
+          avatarURL: avatarURL,
         },
       },
     });
@@ -104,7 +130,7 @@ router.post("/users/logout", auth, (req, res, next) => {
 });
 
 router.get("/users/current", auth, (req, res, next) => {
-  const { email } = req.user;
+  const { email, avatarURL } = req.user;
 
   res.json({
     status: "success",
@@ -112,11 +138,27 @@ router.get("/users/current", auth, (req, res, next) => {
     data: {
       message: `Authorization was successful: ${email}`,
       user: {
-        email: `${email}`,
+        email,
         subscription: "starter",
+        avatarURL,
       },
     },
   });
+});
+
+// multer & avatars
+
+router.post("/upload", upload.single("avatar"), async (req, res, next) => {
+  const { description } = req.body;
+  const { path: temporaryName, originalname } = req.file;
+  const fileName = path.join(storeImage, originalname);
+  try {
+    await fs.rename(temporaryName, fileName);
+  } catch (err) {
+    await fs.unlink(temporaryName);
+    return next(err);
+  }
+  res.json({ description, message: "File sent successfully", status: 200 });
 });
 
 module.exports = router;
