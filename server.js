@@ -4,9 +4,9 @@ const mongoose = require("mongoose");
 
 const createError = require("http-errors");
 const path = require("path");
-const fs = require("fs").promises;
-const uploadDir = path.join(process.cwd(), "public/avatars");
-const storeImage = path.join(process.cwd(), "public/avatars");
+// const fs = require("fs").promises;
+// const uploadDir = path.join(process.cwd(), "public/avatars");
+// const storeImage = path.join(process.cwd(), "public/avatars");
 
 require("dotenv").config();
 
@@ -35,18 +35,18 @@ app.use((err, req, res, next) => {
   res.json({ message: err.message, status: err.status });
 });
 
-const isAccessible = (path) => {
-  return fs
-    .access(path)
-    .then(() => true)
-    .catch(() => false);
-};
+// const isAccessible = (path) => {
+//   return fs
+//     .access(path)
+//     .then(() => true)
+//     .catch(() => false);
+// };
 
-const createFolderDoesNotExist = async (folder) => {
-  if (!(await isAccessible(folder))) {
-    await fs.mkdir(folder);
-  }
-};
+// const createFolderDoesNotExist = async (folder) => {
+//   if (!(await isAccessible(folder))) {
+//     await fs.mkdir(folder);
+//   }
+// };
 
 const PORT = process.env.PORT || 3000;
 const DB_HOST = process.env.DB_HOST;
@@ -56,8 +56,8 @@ const connection = mongoose.connect(DB_HOST);
 connection
   .then(() => {
     app.listen(PORT, async () => {
-      createFolderDoesNotExist(uploadDir);
-      createFolderDoesNotExist(storeImage);
+      //   createFolderDoesNotExist(uploadDir);
+      //   createFolderDoesNotExist(storeImage);
       console.log(`Server running. Use our API on port: ${PORT}`);
     });
   })

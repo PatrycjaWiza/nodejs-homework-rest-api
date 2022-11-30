@@ -5,12 +5,13 @@ const passport = require("passport");
 const User = require("../service/schemas/users");
 const ctrlContact = require("../controller");
 
+const Jimp = require("jimp");
 const gravatar = require("gravatar");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs").promises;
-const uploadDir = path.join(process.cwd(), "public/avatars");
-const storeImage = path.join(process.cwd(), "public/avatars");
+const uploadDir = path.join(__dirname, "../temp");
+const storeImage = path.join(__dirname, "../public/avatars");
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -146,19 +147,47 @@ router.get("/users/current", auth, (req, res, next) => {
   });
 });
 
-// multer & avatars
+// change avatar
+router.patch(
+  "/users/avatars",
+  auth,
+  upload.single("avatar"),
+  async (req, res, next) => {
+    const { path: temporaryName, originalname } = req.file;
 
-router.post("/upload", upload.single("avatar"), async (req, res, next) => {
-  const { description } = req.body;
-  const { path: temporaryName, originalname } = req.file;
-  const fileName = path.join(storeImage, originalname);
-  try {
-    await fs.rename(temporaryName, fileName);
-  } catch (err) {
-    await fs.unlink(temporaryName);
-    return next(err);
+    await Jimp.read(`'${temporaryName}'`)
+      .then((image) => {
+        return image.resize(250, 250).write(`'${temporaryName}'`);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+    try {
+      const { authorization } = req.headers;
+      // eslint-disable-next-line no-unused-vars
+      const [_, token] = authorization.split(" ");
+      const { _id } = jwt.verify(token, secret);
+      console.log(_id);
+      const newFileName = `${token
+        .split(".")
+        .reverse()
+        .splice(0, 1)}.${originalname}`;
+      const fileName = path.join(storeImage, newFileName);
+      await fs.rename(temporaryName, fileName);
+
+      const avatarURL = path.join("/avatars", newFileName);
+      await User.findByIdAndUpdate(_id, { avatarURL }, { new: true });
+      res.json({
+        message: "File sent successfully",
+        status: 200,
+        avatarURL,
+      });
+    } catch (err) {
+      await fs.unlink(temporaryName);
+      return next(err);
+    }
   }
-  res.json({ description, message: "File sent successfully", status: 200 });
-});
+);
 
 module.exports = router;
