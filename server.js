@@ -1,6 +1,13 @@
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
+
+const createError = require("http-errors");
+const path = require("path");
+// const fs = require("fs").promises;
+// const uploadDir = path.join(process.cwd(), "public/avatars");
+// const storeImage = path.join(process.cwd(), "public/avatars");
+
 require("dotenv").config();
 
 const logger = require("morgan");
@@ -15,24 +22,31 @@ const formatsLogger = app.get("env") === "development" ? "dev" : "short";
 app.use(logger(formatsLogger));
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join("public")));
 
-app.use("/api/contacts", contactsRouter);
+app.use("/", contactsRouter);
 
-app.use((req, res) => {
-  res.status(404).json({
-    message: `Use api on routes: 
-    /api/contacts/users/signup - registration user {email, password}
-    /api/contacts/users/login - login {email, password}
-    /api/contacts/users/current - get message if user is authenticated
-    /api/contacts/users/logout - get message if user is logged out
-  `,
-    data: "Not found",
-  });
+app.use((req, res, next) => {
+  next(createError(404));
 });
 
 app.use((err, req, res, next) => {
-  res.status(500).json({ message: err.message });
+  res.status(err.status || 500);
+  res.json({ message: err.message, status: err.status });
 });
+
+// const isAccessible = (path) => {
+//   return fs
+//     .access(path)
+//     .then(() => true)
+//     .catch(() => false);
+// };
+
+// const createFolderDoesNotExist = async (folder) => {
+//   if (!(await isAccessible(folder))) {
+//     await fs.mkdir(folder);
+//   }
+// };
 
 const PORT = process.env.PORT || 3000;
 const DB_HOST = process.env.DB_HOST;
@@ -41,7 +55,9 @@ const connection = mongoose.connect(DB_HOST);
 
 connection
   .then(() => {
-    app.listen(PORT, function () {
+    app.listen(PORT, async () => {
+      //   createFolderDoesNotExist(uploadDir);
+      //   createFolderDoesNotExist(storeImage);
       console.log(`Server running. Use our API on port: ${PORT}`);
     });
   })
